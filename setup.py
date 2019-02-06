@@ -1,10 +1,10 @@
 from setuptools import setup
 
 setup(
-    name='protobuf-to-dict',
+    name='protobuf-to-dict-whl',
     description='A teeny Python library for creating Python dicts from '
         'protocol buffers and the reverse. Useful as an intermediate step '
-        'before serialisation (e.g. to JSON).',
+        'before serialisation (e.g. to JSON).  Added wheel packages for py2 and py3.',
     version='0.1.0',
     author='Ben Hodgson',
     author_email='ben@benhodgson.com',
