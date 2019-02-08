@@ -6,6 +6,7 @@ __all__ = ["protobuf_to_dict", "TYPE_CALLABLE_MAP", "dict_to_protobuf", "REVERSE
 
 
 EXTENSION_CONTAINER = '___X'
+_CLASS_KEY = 'class_name'
 
 
 TYPE_CALLABLE_MAP = {
@@ -36,11 +37,13 @@ def enum_label_name(field, value):
     return field.enum_type.values_by_number[int(value)].name
 
 
-def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False):
+def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, add_class_metadata=False):
     result_dict = {}
     extensions = {}
+    if add_class_metadata:
+        result_dict[_CLASS_KEY] = pb.DESCRIPTOR.name
     for field, value in pb.ListFields():
-        type_callable = _get_field_value_adaptor(pb, field, type_callable_map, use_enum_labels)
+        type_callable = _get_field_value_adaptor(pb, field, type_callable_map, use_enum_labels, add_class_metadata)
         if field.label == FieldDescriptor.LABEL_REPEATED:
             type_callable = repeated(type_callable)
 
@@ -55,12 +58,12 @@ def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=Fa
     return result_dict
 
 
-def _get_field_value_adaptor(pb, field, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False):
+def _get_field_value_adaptor(pb, field, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, add_class_metadata=False):
     if field.type == FieldDescriptor.TYPE_MESSAGE:
         # recursively encode protobuf sub-message
         return lambda pb: protobuf_to_dict(pb,
             type_callable_map=type_callable_map,
-            use_enum_labels=use_enum_labels)
+            use_enum_labels=use_enum_labels, add_class_metadata=add_class_metadata)
 
     if use_enum_labels and field.type == FieldDescriptor.TYPE_ENUM:
         return lambda value: enum_label_name(field, value)
@@ -102,7 +105,7 @@ def dict_to_protobuf(pb_klass_or_instance, values, type_callable_map=REVERSE_TYP
 def _get_field_mapping(pb, dict_value, strict):
     field_mapping = []
     for key, value in dict_value.items():
-        if key == EXTENSION_CONTAINER:
+        if key == EXTENSION_CONTAINER or key == _CLASS_KEY:
             continue
         if key not in pb.DESCRIPTOR.fields_by_name:
             if strict:

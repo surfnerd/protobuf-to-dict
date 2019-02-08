@@ -1,24 +1,32 @@
 import unittest
 from tests.sample_pb2 import MessageOfTypes, extDouble, extString, NestedExtension
 from protobuf_to_dict import protobuf_to_dict, dict_to_protobuf
+from parameterized import parameterized
 import base64
 import nose.tools
 import json
 
+_CLASS_KEY='class_name'
 
 class Test(unittest.TestCase):
-    def test_basics(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_basics(self, add_class_metadata):
         m = self.populate_MessageOfTypes()
-        d = protobuf_to_dict(m)
-        self.compare(m, d, ['nestedRepeated'])
+        d = protobuf_to_dict(m, add_class_metadata=add_class_metadata)
+        self.compare(m, d, ['nestedRepeated'], add_class_metadata=add_class_metadata)
 
         m2 = dict_to_protobuf(MessageOfTypes, d)
         assert m == m2
 
-    def test_use_enum_labels(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_use_enum_labels(self, add_class_metadata):
         m = self.populate_MessageOfTypes()
-        d = protobuf_to_dict(m, use_enum_labels=True)
-        self.compare(m, d, ['enm', 'enmRepeated', 'nestedRepeated'])
+        d = protobuf_to_dict(m, use_enum_labels=True, add_class_metadata=add_class_metadata)
+        self.compare(m, d, ['enm', 'enmRepeated', 'nestedRepeated'], add_class_metadata=add_class_metadata)
         assert d['enm'] == 'C'
         assert d['enmRepeated'] == ['A', 'C']
 
@@ -37,10 +45,13 @@ class Test(unittest.TestCase):
         with nose.tools.assert_raises(KeyError):
             dict_to_protobuf(MessageOfTypes, d)
 
-    def test_repeated_enum(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_repeated_enum(self, add_class_metadata):
         m = self.populate_MessageOfTypes()
-        d = protobuf_to_dict(m, use_enum_labels=True)
-        self.compare(m, d, ['enm', 'enmRepeated', 'nestedRepeated'])
+        d = protobuf_to_dict(m, use_enum_labels=True, add_class_metadata=add_class_metadata)
+        self.compare(m, d, ['enm', 'enmRepeated', 'nestedRepeated'], add_class_metadata=add_class_metadata)
         assert d['enmRepeated'] == ['A', 'C']
 
         m2 = dict_to_protobuf(MessageOfTypes, d)
@@ -50,43 +61,61 @@ class Test(unittest.TestCase):
         with nose.tools.assert_raises(KeyError):
             dict_to_protobuf(MessageOfTypes, d)
 
-    def test_nested_repeated(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_nested_repeated(self, add_class_metadata):
         m = self.populate_MessageOfTypes()
         m.nestedRepeated.extend([MessageOfTypes.NestedType(req=str(i)) for i in range(10)])
 
-        d = protobuf_to_dict(m)
-        self.compare(m, d, exclude=['nestedRepeated'])
-        assert d['nestedRepeated'] == [{'req': str(i)} for i in range(10)]
+        d = protobuf_to_dict(m, add_class_metadata=add_class_metadata)
+        self.compare(m, d, exclude=['nestedRepeated'], add_class_metadata=add_class_metadata)
+        if not add_class_metadata:
+            assert d['nestedRepeated'] == [{'req': str(i)} for i in range(10)]
+        else:
+            assert d['nestedRepeated'] == [{'req': str(i),_CLASS_KEY:'NestedType'} for i in range(10)]
 
         m2 = dict_to_protobuf(MessageOfTypes, d)
         assert m == m2
 
-    def test_reverse(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_reverse(self, add_class_metadata):
         m = self.populate_MessageOfTypes()
-        m2 = dict_to_protobuf(MessageOfTypes, protobuf_to_dict(m))
+        m2 = dict_to_protobuf(MessageOfTypes, protobuf_to_dict(m, add_class_metadata=add_class_metadata))
         assert m == m2
         m2.dubl = 0
         assert m2 != m
 
-    def test_incomplete(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_incomplete(self, add_class_metadata):
         m = self.populate_MessageOfTypes()
-        d = protobuf_to_dict(m)
+        d = protobuf_to_dict(m, add_class_metadata=add_class_metadata)
         d.pop('dubl')
         m2 = dict_to_protobuf(MessageOfTypes, d)
         assert m2.dubl == 0
         assert m != m2
 
-    def test_pass_instance(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_pass_instance(self, add_class_metadata):
         m = self.populate_MessageOfTypes()
-        d = protobuf_to_dict(m)
+        d = protobuf_to_dict(m, add_class_metadata=add_class_metadata)
         d['dubl'] = 1
         m2 = dict_to_protobuf(m, d)
         assert m is m2
         assert m.dubl == 1
 
-    def test_strict(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_strict(self, add_class_metadata):
         m = self.populate_MessageOfTypes()
-        d = protobuf_to_dict(m)
+        d = protobuf_to_dict(m, add_class_metadata=add_class_metadata)
         d['meow'] = 1
         with nose.tools.assert_raises(KeyError):
             m2 = dict_to_protobuf(MessageOfTypes, d)
@@ -117,18 +146,25 @@ class Test(unittest.TestCase):
         m.range.extend(range(10))
         return m
 
-    def compare(self, m, d, exclude=None):
+    def compare(self, m, d, exclude=None, add_class_metadata=False):
         i = 0
-        exclude = ['byts', 'nested'] + (exclude or [])
+        exclude = ['byts', 'nested', _CLASS_KEY] + (exclude or [])
         for i, field in enumerate(MessageOfTypes.DESCRIPTOR.fields): #@UndefinedVariable
             if field.name not in exclude:
                 assert field.name in d, field.name
                 assert d[field.name] == getattr(m, field.name), (field.name, d[field.name])
         assert i > 0
         assert m.byts == base64.b64decode(d['byts'])
-        assert d['nested'] == {'req': m.nested.req}
+        print(d)
+        if add_class_metadata:
+            assert d['nested'] == {'req': m.nested.req, _CLASS_KEY : 'NestedType'}
+        else:
+            assert d['nested'] == {'req': m.nested.req}
 
-    def test_extensions(self):
+    @parameterized.expand([
+        [True], [False]
+    ])
+    def test_extensions(self, add_class_metadata):
         m = MessageOfTypes()
 
         primitives = {extDouble: 123.4, extString: "string", NestedExtension.extInt: 4}
@@ -138,7 +174,7 @@ class Test(unittest.TestCase):
         m.Extensions[NestedExtension.extNested].req = "nested"
 
         # Confirm compatibility with JSON serialization
-        res = json.loads(json.dumps(protobuf_to_dict(m)))
+        res = json.loads(json.dumps(protobuf_to_dict(m, add_class_metadata=add_class_metadata)))
         assert '___X' in res
         exts = res['___X']
         assert set(exts.keys()) == set([str(f.number) for f, _ in m.ListFields() if f.is_extension])
