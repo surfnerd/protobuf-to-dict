@@ -6,7 +6,7 @@ serialization (e.g. to JSON).
 
 ## Installation
 
-Use `pip install protobuf-to-dict` or `python setup.py install`.
+Use `pip install protobuf-to-dict-whl` or `python setup.py install`.
 
 ## Example
 
@@ -72,8 +72,9 @@ $ protoc --python_out=src -Isrc src/tests/sample.proto
 protobuf-to-dict is written and maintained by
 [Ben Hodgson](http://benhodgson.com/), with significant contributions from
 [Nino Walker](https://github.com/ninowalker),
-[Jonathan Klaassen](https://github.com/jaklaassen), and
-[Tristram Gräbener](http://blog.tristramg.eu/).
+[Jonathan Klaassen](https://github.com/jaklaassen),
+[Tristram Gräbener](http://blog.tristramg.eu/), and
+[Chris Goy](https://github.com/surfnerd).
 
 
 ## (Un)license
