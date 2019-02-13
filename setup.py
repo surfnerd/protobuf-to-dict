@@ -5,7 +5,7 @@ setup(
     description='A teeny Python library for creating Python dicts from '
         'protocol buffers and the reverse. Useful as an intermediate step '
         'before serialisation (e.g. to JSON).  Added support for class metadata',
-    version='0.1.2',
+    version='0.1.3',
     author='Ben Hodgson with additions by Chris Goy',
     author_email='goyenator@gmail.com',
     url='https://github.com/surfnerd/protobuf-to-dict',
