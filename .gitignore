@@ -8,5 +8,4 @@ build
 .project
 .pydevproject
 *~
-src/protobuf_to_dict.egg-info
-
+src/protobuf_to_dict_whl.egg-info

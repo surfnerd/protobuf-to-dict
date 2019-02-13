@@ -7,6 +7,10 @@ __all__ = ["protobuf_to_dict", "TYPE_CALLABLE_MAP", "dict_to_protobuf", "REVERSE
 
 EXTENSION_CONTAINER = '___X'
 _CLASS_KEY = 'class_name'
+_PACKAGE_KEY = 'package_name'
+_DEFAULT_PACKAGE_NAME = 'default'
+
+_IGNORE_FIELDS={EXTENSION_CONTAINER, _CLASS_KEY, _PACKAGE_KEY}
 
 
 TYPE_CALLABLE_MAP = {
@@ -37,13 +41,32 @@ def enum_label_name(field, value):
     return field.enum_type.values_by_number[int(value)].name
 
 
-def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, add_class_metadata=False):
+def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, add_class_metadata=False, overwrite_package_with_name=None):
+    """Recursively populate a dictionary with a protobuf object.
+
+    :param pb: a protobuf message class, or an protobuf instance
+    :type pb: an instance of a subclass of google.protobuf.message.Message
+    :param dict type_callable_map: a mapping of protobuf types to callables for setting
+       values on the target instance.
+    :param bool use_enum_labels: True if enums should be represented as their string labels,
+       False for their ordianl value.
+    :param bool add_class_metadata: True to add class names and package names to the dictionary.
+    :param string overwrite_package_with_name: If set, will use the value as the package name
+       for all objects. Only used if add_class_metadata is True.
+    """
     result_dict = {}
     extensions = {}
     if add_class_metadata:
         result_dict[_CLASS_KEY] = pb.DESCRIPTOR.name
+        # Overwrite the package name if we have a value to overwrite with.
+        if overwrite_package_with_name is not None:
+            result_dict[_PACKAGE_KEY] = overwrite_package_with_name
+        else:
+            result_dict[_PACKAGE_KEY] = pb.DESCRIPTOR.full_name.rpartition('.')[0]
+
     for field, value in pb.ListFields():
-        type_callable = _get_field_value_adaptor(pb, field, type_callable_map, use_enum_labels, add_class_metadata)
+        type_callable = _get_field_value_adaptor(
+            pb, field, type_callable_map, use_enum_labels, add_class_metadata=add_class_metadata, overwrite_package_with_name=overwrite_package_with_name)
         if field.label == FieldDescriptor.LABEL_REPEATED:
             type_callable = repeated(type_callable)
 
@@ -58,12 +81,12 @@ def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=Fa
     return result_dict
 
 
-def _get_field_value_adaptor(pb, field, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, add_class_metadata=False):
+def _get_field_value_adaptor(pb, field, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, add_class_metadata=False, overwrite_package_with_name=None):
     if field.type == FieldDescriptor.TYPE_MESSAGE:
         # recursively encode protobuf sub-message
         return lambda pb: protobuf_to_dict(pb,
             type_callable_map=type_callable_map,
-            use_enum_labels=use_enum_labels, add_class_metadata=add_class_metadata)
+            use_enum_labels=use_enum_labels, add_class_metadata=add_class_metadata, overwrite_package_with_name=overwrite_package_with_name)
 
     if use_enum_labels and field.type == FieldDescriptor.TYPE_ENUM:
         return lambda value: enum_label_name(field, value)
@@ -89,7 +112,7 @@ def dict_to_protobuf(pb_klass_or_instance, values, type_callable_map=REVERSE_TYP
 
     :param pb_klass_or_instance: a protobuf message class, or an protobuf instance
     :type pb_klass_or_instance: a type or instance of a subclass of google.protobuf.message.Message
-    :param dict values: a dictionary of values. Repeated and nested values are 
+    :param dict values: a dictionary of values. Repeated and nested values are
        fully supported.
     :param dict type_callable_map: a mapping of protobuf types to callables for setting
        values on the target instance.
@@ -105,7 +128,7 @@ def dict_to_protobuf(pb_klass_or_instance, values, type_callable_map=REVERSE_TYP
 def _get_field_mapping(pb, dict_value, strict):
     field_mapping = []
     for key, value in dict_value.items():
-        if key == EXTENSION_CONTAINER or key == _CLASS_KEY:
+        if key in _IGNORE_FIELDS:
             continue
         if key not in pb.DESCRIPTOR.fields_by_name:
             if strict:
