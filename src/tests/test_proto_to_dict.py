@@ -7,7 +7,7 @@ import nose.tools
 import json
 
 _CLASS_KEY='class_name'
-_PACKAGE_KEY = 'package_name'
+_PACKAGE_KEY = 'name_space'
 _DEFAULT_PACKAGE_NAME = 'default'
 
 class Test(unittest.TestCase):

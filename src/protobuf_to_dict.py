@@ -7,7 +7,7 @@ __all__ = ["protobuf_to_dict", "TYPE_CALLABLE_MAP", "dict_to_protobuf", "REVERSE
 
 EXTENSION_CONTAINER = '___X'
 _CLASS_KEY = 'class_name'
-_PACKAGE_KEY = 'package_name'
+_PACKAGE_KEY = 'name_space'
 _DEFAULT_PACKAGE_NAME = 'default'
 
 _IGNORE_FIELDS={EXTENSION_CONTAINER, _CLASS_KEY, _PACKAGE_KEY}
